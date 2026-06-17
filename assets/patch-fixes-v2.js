@@ -1,384 +1,234 @@
 /**
- * Buildplan 360 — Patch Fixes v2
+ * Buildplan 360 — Patch Fixes v2 (REWRITE seguro)
  *
- * 1. Fix columna link_urls en schema cache (ya agregada en DB)
- * 2. Edición inline: guardar con Enter O al perder foco (blur)
- *    — en celdas de texto libre (tableros, nivel, rubro, contratista)
- *    — ya funcionaba así; acá nos aseguramos de que TODAS las celdas
- *    — cierren y guarden también cuando el usuario hace clic fuera
- * 3. Fila nueva al final del Gantt para crear tarea rápida tipo Excel
+ * 1. Edición inline: guardar al perder foco (blur / clic afuera)
+ * 2. Fila nueva rápida tipo Excel al final del Gantt
+ *
+ * PERFORMANCE: sin setIntervals ni observers sobre body.
+ * Usa un único observer sobre .left-body debounced.
  */
-(function() {
+(function () {
   'use strict';
 
-  /* ══════════════════════════════════════════════════
-     HELPERS
-  ══════════════════════════════════════════════════ */
-  function getSB() {
-    if (window._p360sb) return window._p360sb;
-    const root = document.getElementById('root');
-    if (!root) return null;
-    const fk = Object.keys(root).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
-    if (!fk) return null;
-    function walk(f, d) {
-      if (!f || d > 60) return null;
-      const check = v => v && typeof v === 'object' && typeof v.from === 'function' && v.auth;
-      const mp = f.memoizedProps;
-      if (mp) for (const v of Object.values(mp)) if (check(v)) return v;
-      let s = f.memoizedState, sc = 0;
-      while (s && sc++ < 15) {
-        if (check(s.memoizedState)) return s.memoizedState;
-        if (s.memoizedState && typeof s.memoizedState === 'object')
-          for (const v of Object.values(s.memoizedState)) if (check(v)) return v;
-        s = s.next;
-      }
-      return walk(f.child, d+1) || walk(f.sibling, d+1);
-    }
-    window._p360sb = walk(root[fk], 0);
-    return window._p360sb;
-  }
-
+  /* ══ helpers ══════════════════════════════════════════ */
   function getStore() {
     const root = document.getElementById('root');
     if (!root) return null;
-    const fk = Object.keys(root).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
+    const fk = Object.keys(root).find(k =>
+      k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
     if (!fk) return null;
     function walk(f, d) {
-      if (!f || d > 80) return null;
+      if (!f || d > 90) return null;
       const s = f.memoizedState;
-      if (s && s.memoizedState && typeof s.memoizedState.saveTask === 'function') return s.memoizedState;
-      return walk(f.child, d+1) || walk(f.sibling, d+1);
+      if (s && s.memoizedState && typeof s.memoizedState.saveTask === 'function')
+        return s.memoizedState;
+      return walk(f.child, d + 1) || walk(f.sibling, d + 1);
     }
     return walk(root[fk], 0);
   }
 
   function showToast(msg, type) {
-    // Usa el sistema Q() del bundle si está disponible en window
-    try {
-      const root = document.getElementById('root');
-      const fk = Object.keys(root).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
-      function walk(f, d) {
-        if (!f || d > 80) return null;
-        const s = f.memoizedState;
-        if (s && s.memoizedState && Array.isArray(s.memoizedState) && s.queue && s.queue.dispatch) return s.queue.dispatch;
-        return walk(f.child, d+1) || walk(f.sibling, d+1);
-      }
-    } catch(e) {}
-    // Fallback visual simple
     const t = document.createElement('div');
-    t.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:99999;
+    t.style.cssText = `position:fixed;bottom:24px;right:24px;z-index:99999;
       padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;
       color:#fff;background:${type==='error'?'#dc2626':type==='warning'?'#f59e0b':'#10b981'};
-      box-shadow:0 4px 20px rgba(0,0,0,.25);transition:opacity .3s`;
+      box-shadow:0 4px 20px rgba(0,0,0,.25);pointer-events:none`;
     t.textContent = msg;
     document.body.appendChild(t);
-    setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 2500);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s';
+      setTimeout(() => t.remove(), 350); }, 2500);
   }
 
-  /* ══════════════════════════════════════════════════
-     1. PATCH INLINE EDIT: asegurar blur = commit en TODAS
-        las celdas (tableros, nivel, rubro, contratista, nombre)
-        El problema original: a veces el onblur no dispara
-        porque React re-renderiza el DOM. Acá usamos
-        document-level mousedown para detectar "clic afuera".
-  ══════════════════════════════════════════════════ */
-  function patchInlineEditBlur() {
-    // Escuchar mousedown a nivel documento; si hay un input activo
-    // de edición inline y el clic es fuera, forzar commit
-    document.addEventListener('mousedown', function(e) {
-      const activeInputs = document.querySelectorAll('.cell-ie input, .cell-ie select');
-      activeInputs.forEach(inp => {
-        if (!inp.contains(e.target) && inp !== e.target) {
-          // Forzar blur para que el onblur del patch-v488167 dispare commit
-          setTimeout(() => {
-            try { inp.blur(); } catch(err) {}
-          }, 50);
-        }
-      });
-    }, true);
-
-    // Interceptar también el Escape global para cerrar inputs abiertos
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        const activeInputs = document.querySelectorAll('.cell-ie input, .cell-ie select');
-        activeInputs.forEach(inp => {
-          try { inp.blur(); } catch(err) {}
-        });
+  /* ══ 1. FIX BLUR EN EDICIÓN INLINE ══════════════════ */
+  // Cuando el usuario hace clic fuera de una celda en edición,
+  // forzamos blur para que patch-v488167 haga commit.
+  document.addEventListener('mousedown', e => {
+    document.querySelectorAll('.cell-ie input, .cell-ie select').forEach(inp => {
+      if (inp !== e.target && !inp.contains(e.target)) {
+        setTimeout(() => { try { inp.blur(); } catch (_) {} }, 30);
       }
-    }, true);
-  }
+    });
+  }, true);
 
-  /* ══════════════════════════════════════════════════
-     2. FILA NUEVA RÁPIDA TIPO EXCEL
-        Agrega una fila "+ Nueva tarea" al final de la
-        grilla del Gantt. Al tipear el nombre y presionar
-        Enter (o Tab) crea la tarea inmediatamente.
-  ══════════════════════════════════════════════════ */
-  const QUICK_ROW_ID = 'p360-quick-add-row';
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('.cell-ie input, .cell-ie select').forEach(inp => {
+      try { inp.blur(); } catch (_) {}
+    });
+  }, true);
 
-  function injectQuickAddStyles() {
-    if (document.getElementById('p360-quick-add-css')) return;
-    const style = document.createElement('style');
-    style.id = 'p360-quick-add-css';
-    style.textContent = `
-      .p360-quick-add-row {
+  /* ══ 2. FILA RÁPIDA TIPO EXCEL ═══════════════════════ */
+  const CSS_ID  = 'p360-qa-css';
+  const ROW_ID  = 'p360-qa-row';
+
+  function injectCSS() {
+    if (document.getElementById(CSS_ID)) return;
+    const s = document.createElement('style');
+    s.id = CSS_ID;
+    s.textContent = `
+      #${ROW_ID} {
         display: grid;
         grid-template-columns: var(--col-tpl);
         align-items: center;
-        min-height: 32px;
-        border-bottom: 1px solid var(--border, #e2e8f0);
-        padding: 0;
-        background: var(--surface, #fff);
+        min-height: 30px;
+        border-top: 2px dashed var(--border,#e2e8f0);
+        background: var(--surface,#fff);
         position: sticky;
         bottom: 0;
         z-index: 5;
       }
-      .p360-quick-add-row:hover {
-        background: var(--surface-2, #f8f9fa);
+      #${ROW_ID}:hover { background: var(--surface-2,#f8f9fa); }
+      .p360-qa-num {
+        display:flex;align-items:center;justify-content:center;
+        color:var(--text-3,#aaa);font-size:10px;padding:0 4px;
       }
-      .p360-quick-add-num {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--text-3, #aaa);
-        font-size: 10px;
-        padding: 0 4px;
+      .p360-qa-cell {
+        display:flex;align-items:center;padding:0 6px;overflow:hidden;grid-column:2;
       }
-      .p360-quick-add-cell {
-        display: flex;
-        align-items: center;
-        padding: 0 6px;
-        overflow: hidden;
+      .p360-qa-input {
+        width:100%;border:none;background:transparent;font-size:12px;
+        color:var(--text,#1a1a2e);outline:none;padding:2px 0;font-family:inherit;
       }
-      .p360-quick-add-input {
-        width: 100%;
-        border: none;
-        background: transparent;
-        font-size: 12px;
-        color: var(--text, #1a1a2e);
-        outline: none;
-        padding: 2px 0;
-        font-family: inherit;
+      .p360-qa-input::placeholder { color:var(--text-3,#aaa);font-style:italic; }
+      .p360-qa-input:focus { border-bottom:1.5px solid var(--brand-orange,#FB7520); }
+      .p360-qa-hint {
+        font-size:9px;color:var(--text-3,#aaa);white-space:nowrap;
+        margin-left:6px;flex-shrink:0;display:none;
       }
-      .p360-quick-add-input::placeholder {
-        color: var(--text-3, #aaa);
-        font-style: italic;
-      }
-      .p360-quick-add-input:focus {
-        border-bottom: 1.5px solid var(--brand-orange, #FB7520);
-      }
-      .p360-quick-add-input:focus::placeholder {
-        opacity: 0.4;
-      }
-      .p360-quick-add-hint {
-        font-size: 9px;
-        color: var(--text-3, #aaa);
-        white-space: nowrap;
-        margin-left: 6px;
-        flex-shrink: 0;
-      }
-      .p360-quick-creating {
-        opacity: 0.5;
-        pointer-events: none;
-      }
+      .p360-qa-busy { opacity:.5;pointer-events:none; }
     `;
-    document.head.appendChild(style);
+    document.head.appendChild(s);
   }
 
-  function injectQuickAddRow() {
-    // Solo en vista Gantt con left-body visible
+  function injectRow() {
     const leftBody = document.querySelector('.left-body');
     if (!leftBody) return;
-    if (leftBody.querySelector('#' + QUICK_ROW_ID)) return;
+    // No inyectar si ya existe
+    if (leftBody.querySelector('#' + ROW_ID)) return;
 
     const store = getStore();
-    if (!store || !store.canEdit) return; // Solo para editores/admins
+    if (!store || !store.canEdit) return;
 
-    // Obtener colTpl y número de tareas visibles
-    const ganttSplit = document.querySelector('.gantt-split');
-    const colTpl = ganttSplit ? getComputedStyle(ganttSplit).getPropertyValue('--col-tpl') : '';
-    const taskCount = leftBody.querySelectorAll('.task-row').length;
+    // Obtener col-tpl del split padre
+    const split = document.querySelector('.gantt-split');
+    const colTpl = split
+      ? getComputedStyle(split).getPropertyValue('--col-tpl').trim()
+      : '';
 
     const row = document.createElement('div');
-    row.id = QUICK_ROW_ID;
-    row.className = 'p360-quick-add-row';
+    row.id = ROW_ID;
     if (colTpl) row.style.setProperty('--col-tpl', colTpl);
 
-    // Celda #
     const numCell = document.createElement('div');
-    numCell.className = 'p360-quick-add-num';
-    numCell.textContent = taskCount + 1;
+    numCell.className = 'p360-qa-num';
+    const count = leftBody.querySelectorAll('.task-row').length;
+    numCell.textContent = count + 1;
 
-    // Celda nombre (la más importante)
-    const nameCell = document.createElement('div');
-    nameCell.className = 'p360-quick-add-cell';
-    nameCell.style.gridColumn = 'span 1';
+    const cell = document.createElement('div');
+    cell.className = 'p360-qa-cell';
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.className = 'p360-quick-add-input';
-    input.placeholder = '+ Nueva tarea (Enter para crear)';
+    input.className = 'p360-qa-input';
+    input.placeholder = '+ Nueva tarea — escribí y presioná Enter';
     input.autocomplete = 'off';
 
     const hint = document.createElement('span');
-    hint.className = 'p360-quick-add-hint';
+    hint.className = 'p360-qa-hint';
     hint.textContent = '↵ Enter';
-    hint.style.display = 'none';
 
     input.addEventListener('focus', () => { hint.style.display = 'inline'; });
-    input.addEventListener('blur', () => { hint.style.display = 'none'; });
-    input.addEventListener('input', () => {
-      hint.style.display = input.value.trim() ? 'inline' : 'none';
+    input.addEventListener('blur',  () => { hint.style.display = 'none'; });
+
+    input.addEventListener('keydown', async e => {
+      if (e.key === 'Escape') { input.value = ''; input.blur(); return; }
+      if (e.key !== 'Enter' && e.key !== 'Tab') return;
+      e.preventDefault();
+      const name = input.value.trim();
+      if (!name) return;
+      await createTask(name, row, input, numCell);
     });
 
-    input.addEventListener('keydown', async (e) => {
-      if (e.key === 'Escape') {
-        input.value = '';
-        input.blur();
-        return;
-      }
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault();
-        const name = input.value.trim();
-        if (!name) return;
-        await createQuickTask(name, row, input, numCell);
-      }
-    });
-
-    nameCell.appendChild(input);
-    nameCell.appendChild(hint);
-
+    cell.appendChild(input);
+    cell.appendChild(hint);
     row.appendChild(numCell);
-    row.appendChild(nameCell);
-
+    row.appendChild(cell);
     leftBody.appendChild(row);
   }
 
-  async function createQuickTask(name, row, input, numCell) {
+  async function createTask(name, row, input, numCell) {
     const store = getStore();
-    if (!store) { showToast('No se pudo acceder al proyecto', 'error'); return; }
+    if (!store) { showToast('Error: no hay proyecto activo', 'error'); return; }
 
-    row.classList.add('p360-quick-creating');
+    row.classList.add('p360-qa-busy');
     input.disabled = true;
-    input.placeholder = 'Creando...';
+    input.placeholder = 'Creando…';
 
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const nextWeek = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
-
-      const taskData = {
-        name: name,
-        description: null,
-        status: 'pending',
-        priority: 'medium',
-        start_date: today,
-        end_date: nextWeek,
-        is_milestone: false,
-        assigned_to: null,
-        parent_task_id: null,
-        progress: 0,
-        task_type_category: null,
-        task_type: null,
-        project_obra_type: null,
-        proy_obra_adm: null,
-        demanda_recursos: null,
-        duration_mode: 'habiles',
-        bar_color: '#1d4ed8',
-        link_urls: null
+      const today    = new Date().toISOString().slice(0, 10);
+      const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const data = {
+        name, description: null,
+        status: 'pending', priority: 'medium',
+        start_date: today, end_date: nextWeek,
+        is_milestone: false, assigned_to: null, parent_task_id: null,
+        progress: 0, task_type_category: null, task_type: null,
+        project_obra_type: null, proy_obra_adm: null, demanda_recursos: null,
+        duration_mode: 'habiles', bar_color: '#1d4ed8', link_urls: null
       };
-
-      // Usar saveTask del store (null = nueva tarea, '' = sin predecesoras)
-      await store.saveTask(taskData, null, '', store.tasks ? store.tasks.filter(t=>!t._isSummary) : []);
-
+      // visibleTasks como contexto de numeración
+      const vis = store.tasks || [];
+      await store.saveTask(data, null, '', vis);
       showToast(`✓ "${name}" creada`, 'success');
-
-      // Limpiar y actualizar contador
       input.value = '';
-      input.disabled = false;
-      input.placeholder = '+ Nueva tarea (Enter para crear)';
-      row.classList.remove('p360-quick-creating');
-
-      // Actualizar número de fila
-      const newCount = document.querySelectorAll('.left-body .task-row').length;
-      numCell.textContent = newCount + 1;
-
-      // Mantener foco para seguir creando tareas
-      setTimeout(() => input.focus(), 100);
-
-    } catch(err) {
-      console.error('Quick create error:', err);
-      showToast('Error al crear: ' + (err.message || err), 'error');
-      input.disabled = false;
+    } catch (err) {
+      showToast('Error: ' + (err.message || err), 'error');
       input.value = name;
-      input.placeholder = '+ Nueva tarea (Enter para crear)';
-      row.classList.remove('p360-quick-creating');
-    }
-  }
-
-  /* ══════════════════════════════════════════════════
-     OBSERVER: re-inyectar la fila cuando el DOM cambie
-     (React re-renderiza y la elimina al crear una tarea)
-  ══════════════════════════════════════════════════ */
-  let _quickAddTimer = null;
-  function scheduleQuickAddInject() {
-    clearTimeout(_quickAddTimer);
-    _quickAddTimer = setTimeout(() => {
-      injectQuickAddRow();
-      // Actualizar --col-tpl si cambió
-      const row = document.getElementById(QUICK_ROW_ID);
-      if (row) {
-        const ganttSplit = document.querySelector('.gantt-split');
-        const colTpl = ganttSplit ? getComputedStyle(ganttSplit).getPropertyValue('--col-tpl') : '';
-        if (colTpl) row.style.setProperty('--col-tpl', colTpl);
-        // Actualizar número
-        const numCell = row.querySelector('.p360-quick-add-num');
-        if (numCell) {
-          const count = document.querySelectorAll('.left-body .task-row').length;
-          numCell.textContent = count + 1;
+    } finally {
+      input.disabled = false;
+      input.placeholder = '+ Nueva tarea — escribí y presioná Enter';
+      row.classList.remove('p360-qa-busy');
+      setTimeout(() => {
+        const nb = document.querySelector('.left-body #' + ROW_ID);
+        if (nb) {
+          const c2 = document.querySelectorAll('.left-body .task-row').length;
+          nb.querySelector('.p360-qa-num').textContent = c2 + 1;
+          nb.querySelector('.p360-qa-input').focus();
         }
-      }
-    }, 400);
-  }
-
-  const quickAddObs = new MutationObserver(scheduleQuickAddInject);
-
-  function startQuickAddObserver() {
-    const leftBody = document.querySelector('.left-body');
-    if (leftBody && !leftBody._p360observed) {
-      leftBody._p360observed = true;
-      quickAddObs.observe(leftBody, { childList: true, subtree: false });
-    }
-    // También observar cambios de tab (gantt ↔ lista)
-    const ganttContainer = document.querySelector('.gantt-split');
-    if (!ganttContainer) return;
-    if (!ganttContainer._p360tabObs) {
-      ganttContainer._p360tabObs = true;
-      new MutationObserver(scheduleQuickAddInject).observe(ganttContainer, { childList: true, subtree: true });
+      }, 600);
     }
   }
 
-  /* ══════════════════════════════════════════════════
-     INIT
-  ══════════════════════════════════════════════════ */
-  function init() {
-    injectQuickAddStyles();
-    patchInlineEditBlur();
+  /* ══ OBSERVER ÚNICO SOBRE .left-body ════════════════ */
+  injectCSS();
+  let _lbObs = null;
+  let _lbTimer = null;
 
-    // Polling para inyectar la fila cuando aparezca el Gantt
-    let attempts = 0;
-    const tryInject = () => {
-      injectQuickAddRow();
-      startQuickAddObserver();
-      attempts++;
-      if (attempts < 30) setTimeout(tryInject, 1000);
-    };
-    setTimeout(tryInject, 800);
+  function watchLeftBody() {
+    const lb = document.querySelector('.left-body');
+    if (!lb) return;
+    if (_lbObs) return; // ya observando
+
+    injectRow(); // primera vez
+
+    _lbObs = new MutationObserver(() => {
+      // Debounce 250ms
+      clearTimeout(_lbTimer);
+      _lbTimer = setTimeout(injectRow, 250);
+    });
+    // Solo childList directo del left-body (NO subtree)
+    _lbObs.observe(lb, { childList: true });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    setTimeout(init, 300);
-  }
+  // Esperar a que aparezca el left-body sin polling agresivo
+  // Usamos un observer sobre #root (un nivel, sin subtree profundo)
+  const rootObs = new MutationObserver(() => {
+    watchLeftBody();
+  });
+  const root = document.getElementById('root');
+  if (root) rootObs.observe(root, { childList: true, subtree: true });
+
+  // Primer intento
+  setTimeout(watchLeftBody, 1200);
 
 })();
