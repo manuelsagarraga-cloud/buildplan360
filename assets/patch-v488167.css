@@ -1,0 +1,318 @@
+/* ============================================================
+   Pipeline360 patch.css v6 — orden original restaurado
+   ============================================================ */
+
+/* ─── 1. PROJECT HEADER — compacto + info colapsable ────── */
+.project-header-compact { padding: 0 !important; }
+.ph-top-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 5px 14px !important;
+  gap: 10px !important;
+  min-height: 38px !important;
+  flex-wrap: nowrap !important;
+}
+.ph-top-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.ph-main-row { display: none !important; }
+.ph-title {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 280px !important;
+  margin: 0 !important;
+}
+.ph-info-row {
+  display: none;
+  padding: 6px 14px 8px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+}
+.ph-info-row.ph-info-open { display: flex; }
+.ph-meta {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  font-size: 11px !important;
+  border-left: 1px solid var(--border) !important;
+  padding-left: 10px !important;
+}
+.ph-meta:first-child { border-left: none !important; padding-left: 0 !important; }
+.ph-meta-label {
+  font-size: 9px !important; font-weight: 700 !important;
+  text-transform: uppercase !important; letter-spacing: .05em !important;
+  color: var(--text-3) !important;
+}
+.ph-meta-value { font-size: 11px; font-weight: 600; color: var(--text); }
+.ph-meta-link { font-size: 11px; font-weight: 600; color: var(--brand-orange); text-decoration: none; }
+.ph-meta-link:hover { text-decoration: underline; }
+.ph-pmo-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; background: var(--brand-orange-bg);
+  border: 1px solid var(--brand-orange); border-radius: 999px;
+  font-size: 11px; font-weight: 700; color: var(--brand-orange);
+  text-decoration: none;
+}
+.ph-info-toggle {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ph-info-toggle:hover { border-color: var(--brand-orange); color: var(--brand-orange); }
+
+/* ─── 2. TOOLBAR COMPACTA (queda donde estaba — arriba) ── */
+.toolbar {
+  padding: 4px 10px !important;
+  gap: 5px !important;
+  min-height: 0 !important;
+  flex-wrap: wrap !important;
+}
+.toolbar-left, .toolbar-right { gap: 4px !important; }
+.toolbar .btn, .toolbar .btn-primary {
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  height: 24px !important;
+  line-height: 1 !important;
+}
+.filter-select {
+  font-size: 11px !important;
+  padding: 2px 6px !important;
+  height: 24px !important;
+}
+.dep-legend { font-size: 10px !important; }
+.dep-legend-item { gap: 3px !important; }
+
+/* ─── 3. BARRA DE CONTROL — ARRIBA DE LA ESCALA DE TIEMPO ──
+   Botones de Todo / Timeline / Gantt para colapsar secciones */
+.p360-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  background: var(--brand-dark);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  user-select: none;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.p360-section-toggle-actions { display: flex; align-items: center; gap: 6px; }
+.p360-section-toggle button {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.p360-section-toggle button:hover { background: rgba(255,255,255,.22); }
+.p360-section-toggle button.active {
+  background: var(--brand-orange);
+  border-color: var(--brand-orange);
+}
+
+/* Modos de visualización */
+.p360-tl-only .gantt-split { display: none !important; }
+.p360-tl-only .timeline-scale {
+  max-height: none !important;
+  flex: 1 !important;
+}
+.p360-tl-only .timeline-scale-body {
+  max-height: none !important;
+  flex: 1 !important;
+}
+.p360-gantt-only .timeline-scale,
+.p360-gantt-only .p360-vsplitter { display: none !important; }
+
+/* ─── 4. GANTT — TEXTOS Y BARRAS MÁS COMPACTOS ─────────  */
+:root { --row-h: 26px !important; }
+.task-row .cell { font-size: 11px !important; padding: 0 4px !important; }
+.task-row .cell .task-name-text { font-size: 11px !important; }
+.task-row .cell .date { font-size: 9px !important; }
+.task-row .cell .pct { font-size: 10px !important; }
+.task-row .cell .assignee-name { font-size: 10px !important; }
+.task-row .cell .avatar {
+  width: 16px !important;
+  height: 16px !important;
+  font-size: 8px !important;
+}
+.left-header .pane-header-cell {
+  font-size: 9px !important;
+  padding: 0 4px !important;
+}
+.bar-label, .bar-label-member, .bar-label-outer { font-size: 9px !important; }
+.bar-avatar-initials { font-size: 7px !important; }
+
+/* ─── 5. COLUMNAS — sin espacio fantasma ─────────────── */
+.task-row > .cell { overflow: hidden !important; min-width: 0 !important; }
+.left-header > .pane-header-cell,
+.left-header > .pane-header-resizable {
+  overflow: hidden !important;
+  min-width: 0 !important;
+}
+
+/* ─── 6. INLINE EDIT ─────────────────────────────────── */
+.cell-ie { cursor: default; position: relative; }
+.cell-ie:hover::after {
+  content: ''; position: absolute; inset: 2px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 3px; pointer-events: none;
+}
+
+/* ─── 7. TIMELINE IMPROVEMENTS ─────────────────────── */
+.timeline-scale {
+  max-height: 50vh !important;
+  flex-shrink: 0 !important;
+}
+.timeline-scale.fullscreen { max-height: none !important; }
+.timeline-scale-body {
+  min-height: 100px !important;
+  max-height: calc(50vh - 56px) !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  padding: 10px 18px 14px !important;
+}
+.timeline-scale.fullscreen .timeline-scale-body { max-height: none !important; }
+.timeline-bar-track { height: 38px !important; }
+.timeline-bar {
+  top: 3px !important; bottom: 3px !important;
+  background: var(--bar-color, var(--brand-orange)) !important;
+  border: none !important;
+  min-width: 30px !important;
+  opacity: .93;
+}
+.timeline-bar:hover { opacity: 1 !important; transform: translateY(-1px) !important; }
+.timeline-bar-progress { background: rgba(255,255,255,.2) !important; opacity: 1 !important; }
+.timeline-bar-content {
+  font-size: 11px !important; font-weight: 700 !important;
+  padding: 0 8px !important; color: #fff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.4) !important;
+}
+.timeline-bar-name { font-weight: 700 !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+.timeline-bar-unpin { display: none !important; }
+.timeline-bars { gap: 0 !important; position: relative; }
+.timeline-bar-row { gap: 0 !important; }
+.timeline-scale-header { padding: 4px 12px !important; flex-wrap: wrap !important; }
+
+/* CRÍTICO: que los inputs de fecha NO se vean bloqueados ──
+   Aseguramos que tienen z-index alto y pointer-events */
+.timeline-range,
+.timeline-range-input,
+.timeline-range-reset,
+.timeline-viewmode,
+.timeline-viewmode-btn,
+.timeline-zoom,
+.timeline-zoom-btn,
+.timeline-scale-actions button {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 5;
+}
+.timeline-range-input {
+  cursor: pointer !important;
+  user-select: text !important;
+}
+
+/* ─── 8. SPLITTER ────────────────────────────────────  */
+.p360-vsplitter {
+  height: 6px;
+  background: var(--border);
+  cursor: ns-resize;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  transition: background .15s;
+}
+.p360-vsplitter:hover, .p360-vsplitter.dragging { background: var(--brand-orange); }
+.p360-vsplitter::after {
+  content: '⋯'; position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 11px; color: var(--text-3);
+  letter-spacing: 2px; pointer-events: none;
+}
+
+/* ─── 9. GANTT / LIBRO SCROLL ───────────────────────── */
+.gantt-split { flex: 1 !important; min-height: 0 !important; }
+.left-body  { overflow-y: auto !important; }
+.right-body { overflow: auto !important; }
+
+
+/* ─── REFUERZO CRÍTICO: columnas fantasma ─────────────
+   Cuando una col está oculta, su slot es 0px pero el resize-handle
+   sobresale a la derecha por right:-2px;width:6px.
+   Fix: que ese pseudo-elemento NO sobresalga si el cell es 0px.   */
+.left-header > .pane-header-resizable,
+.left-header > .pane-header-cell {
+  position: relative;
+  overflow: hidden !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+.left-header > .pane-header-resizable .col-resize-handle {
+  right: 0 !important;
+}
+/* Si el contenedor llegó a 0 efectivo, sacar todo padding */
+.task-row > .cell {
+  overflow: hidden !important;
+  min-width: 0 !important;
+}
+/* Borrar bordes derechos en cells de 0px - imposible CSS-only sin contenedor */
+
+/* SOLUCIÓN ALTERNATIVA: hacer que el padding no genere ancho mínimo */
+.task-row > .cell,
+.left-header > .pane-header-cell,
+.left-header > .pane-header-resizable {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.task-row > .cell > *:not(input):not(select) {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+.left-header > .pane-header-resizable > .pane-header-content {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+
+/* ─── EMPRESA ÚNICA — Ocultar selectores de empresa ───
+   La app está configurada para una sola empresa "B".
+   Ocultamos cualquier selector residual.                  */
+.company-filter,
+.pc-col-company,
+.form-label-hint[children*="super-admin"] {
+  display: none !important;
+}
+/* Columna empresa en la lista de proyectos */
+.projects-card-company,
+.project-card-company {
+  display: none !important;
+}
+/* En el modal Editar/Nuevo: el form-group de Empresa con label "Empresa" o "Empresa *" */
+.form-group:has(> label:first-child:is([class*="form-label"]))
+  > label.form-label:first-child:where(:has(span)) {
+  /* Solo escondemos cuando el label dice "Empresa" - lo hace JS */
+}
