@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,8 +12,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script type="module" crossorigin src="./assets/index-DjIPflYO.js"></script>
+    <!-- Bootstrap del cliente Supabase — DEBE ir primero, antes que el resto de los parches -->
+    <script src="./assets/p360-sb-bootstrap-v1.js" defer></script>
     <link rel="stylesheet" crossorigin href="./assets/index-C7rficSu.css">
-    <!-- Buildplan 360 UI Patch -->
+    <!-- Buildplan 360 patches base -->
     <link rel="stylesheet" href="./assets/patch-v488167.css">
     <script src="./assets/patch-v488167.js" defer></script>
     <script src="./assets/dashboard-v488167.js" defer></script>
@@ -24,6 +26,13 @@
     <script src="./assets/calendario-v1.js" defer></script>
     <script src="./assets/fotos-v1.js" defer></script>
     <script src="./assets/tableros-v1.js" defer></script>
+    <!-- Suite de mejoras (logo, bombita, vincular N, drag handle, PDF) -->
+    <script src="./assets/p360-patch-suite.js" defer></script>
+    <!-- Gantt pro: drag barras, resize, botón hoy, tab grilla -->
+    <script src="./assets/p360-gantt-pro.js" defer></script>
+    <!-- UX suite: grilla Excel, fila rápida, Tab/Enter, dependencias, hoy -->
+    <script src="./assets/p360-ux-suite.js" defer></script>
+    <script src="./assets/p360-fixes-v3.js" defer></script>
   </head>
   <body>
     <div id="root"></div>
